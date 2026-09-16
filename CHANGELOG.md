@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0
+
+Rebuild the public stack from the reviewed AZ-TF-azvdc architecture.
+
+- Restore direct leaf-module calls, two resource groups, original naming and full resource outputs.
+- Restore multi-environment/region tfvars and CSV network policies with synthetic examples.
+- Preserve DNS records, DDoS settings, diagnostics, central private endpoints and optional ACR.
+- Add explicit topology and a bootstrap phase, optional central DNS spoke links and ACR georeplication.
+- Preserve logical subnet keys when resolving private endpoints.
+- Reject subscription-map drift between Terraform and shared delivery configuration.
+- Forward diagnostics/DNS inputs and validate subscription, CIDR, endpoint and registry settings.
+- Add integrated provider-mocked regression tests and first-deployment/operating documentation.
+- Consume the matching shared delivery and leaf-module release.
+
+Breaking changes from provisional 0.1.0: restored interfaces and resource addresses require new state or a separately reviewed migration. The original private repositories were not changed. Validation does not represent a live Azure deployment.
+
 ## 0.1.0
 
-Initial public foundation, redesigned from the original infrastructure repositories. Typed and documented interfaces, synthetic examples, credential-free validation and tests, reproducible dependency pins, and explicit migration boundaries.
+Initial provisional public baseline, superseded by the faithful reconstruction in 0.2.0.

@@ -1,8 +1,0 @@
-# Replace names for your dedicated backend. This file contains no credentials.
-resource_group_name  = "rg-example-tfstate"
-storage_account_name = "replacewithuniquestatename"
-container_name       = "tfstate"
-key                  = "network-foundation/example/uksouth.tfstate"
-# ARM_SUBSCRIPTION_ID identifies the deployment subscription.
-# For a backend in another subscription, set subscription_id here explicitly.
-# CI uses workload identity federation: ARM_USE_OIDC=true and its platform token inputs.

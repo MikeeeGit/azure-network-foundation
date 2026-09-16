@@ -1,5 +1,7 @@
 # Azure network foundation
 
+[![Terraform CI](https://github.com/MikeeeGit/azure-network-foundation/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MikeeeGit/azure-network-foundation/actions/workflows/ci.yml)
+
 An example deployment of reusable Azure networking modules, with separate state and configuration for each environment. It creates a resource group and a virtual network, explicit subnets, optional NSGs/routes, private DNS, local-side peering and private endpoints.
 
 This project demonstrates Terraform module design and delivery through GitHub Actions and Azure Pipelines. All committed environment values are synthetic. The public CI checks run without Azure credentials.

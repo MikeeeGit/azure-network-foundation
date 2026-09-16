@@ -1,20 +1,18 @@
-# Publishing and dual hosting
+# Publishing and two-host operation
 
-GitHub is the canonical public collaboration host. Each repository also has a private Azure Repos counterpart for Azure Pipelines demonstrations.
+GitHub is the public source and contribution entry point. Azure DevOps hosts matching source and pipeline definitions within AzureInfraCode; project access is required.
 
-The public repositories use a fresh Git history with Apache-2.0 licensing. Legacy histories, private configuration and internal documentation are not mirrored.
+Use the same commits and release tags on both remotes. Review contributions on GitHub, run credential-free CI, then publish the reviewed commit to both hosts. Do not maintain independently diverging develop branches on each host.
 
-For the maintainer's working clones, origin points to GitHub and azure points to Azure Repos. Synchronization is explicit:
+A develop branch is available for ongoing work; main and versioned releases are the stable consumer path. Modules/templates should use explicit releases or immutable commits. Changing only a Git repository name must never be used as a shortcut to migrate Terraform state.
 
-```sh
-git push origin main
-git push azure main
-git push origin v0.1.0
-git push azure v0.1.0
-```
+Release checks:
 
-Use reviewed PRs and the configured validation policies for future changes. Do not use force pushes or mirror old repository history. A release should identify matching commits on both hosts, pass their credential-free CI, and state real-cloud qualification separately.
+1. Format/validate the root and run provider-mocked tests.
+2. Validate the synthetic target configurations and shared-helper context.
+3. Check module/template references against the intended released revisions.
+4. Scan tracked files for state, plans, secrets and original estate values.
+5. Confirm CI on GitHub and Azure DevOps for the same commit.
+6. Publish a release note that states whether a live deployment was performed.
 
-GitHub Actions consumers pin both the reusable workflow and its script checkout to the same commit. Azure Pipelines consumers pin their repository resource to that commit and authorize only their own pipeline to read the template repository. Terraform modules also pin child modules by commit SHA.
-
-The Azure repositories are private; public consumers should use the GitHub URLs. There is no automatic cross-host synchronization service and no deployed cloud environment in this public baseline.
+No original Git history, original state or private tfvars are imported into this public repository. Apache-2.0 applies to the published source.

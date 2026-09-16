@@ -28,3 +28,15 @@ terraform.rc
 __pycache__/
 *.pyc
 # Keep provider lockfiles in version control for reproducible repository CI.
+
+# Reviewed synthetic examples form the public configuration contract.
+!config/global.tfvars
+!config/uks/hub/hub.tfvars
+!config/uks/pprd/pprd.tfvars
+!config/uks/prd/prd.tfvars
+!config/ukw/hub/hub.tfvars
+!config/ukw/bcdr/bcdr.tfvars
+.delivery/
+
+# Shared helper context, saved plans and private manifests.
+.terraform-delivery/

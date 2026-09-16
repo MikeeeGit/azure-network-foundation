@@ -1,139 +1,249 @@
-variable "name" {
-  description = "Exact name for the virtual network."
-  type        = string
-}
-variable "resource_group_name" {
-  description = "Name of the resource group created by this deployment."
-  type        = string
-}
 variable "location" {
-  description = "Azure region for network resources."
+  description = "Azure region where resources will be deployed (e.g., uksouth, ukwest)."
   type        = string
 }
-variable "address_space" {
-  description = "Virtual network CIDR ranges."
-  type        = list(string)
+
+variable "location_abbreviated" {
+  description = "Shortened name for the Azure region (e.g., uks for uksouth)."
+  type        = string
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9]{1,9}$", var.location_abbreviated))
+    error_message = "Use a lowercase region code such as uks or ukw."
+  }
 }
-variable "dns_servers" {
-  description = "Custom DNS server IPs; empty uses Azure-provided DNS."
-  type        = list(string)
-  default     = []
+
+variable "company_abbreviation" {
+  description = "Abbreviation for the company name to be used in resource naming."
+  type        = string
+  default     = ""
 }
-variable "tags" {
-  description = "Tags applied to resources supporting tags."
+
+variable "dns_zone_name" {
+  description = "Name of the DNS zone to be used in the environment."
+  type        = string
+  default     = ""
+}
+
+variable "ddos_plan_id" {
+  description = "The ID of the DDoS Protection Plan to attach to the Virtual Network (VNet)."
+  type        = string
+  default     = ""
+}
+
+variable "subscription_id_map" {
+  description = "Mapping of subscription aliases to subscription IDs (e.g., hub, pprd, prd)."
+  type        = map(string)
+
+  validation {
+    condition     = contains(keys(var.subscription_id_map), "hub") && contains(keys(var.subscription_id_map), var.subscription)
+    error_message = "subscription_id_map must include hub and the selected subscription alias."
+  }
+  validation {
+    condition     = alltrue([for id in values(var.subscription_id_map) : can(regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", id))])
+    error_message = "Subscription IDs must be UUIDs. Replace the synthetic example IDs before deployment."
+  }
+  validation {
+    condition     = alltrue([for alias, id in var.subscription_id_map : try(lower(jsondecode(file("${path.root}/delivery.azure.json")).subscriptions[alias]) == lower(id), false)])
+    error_message = "subscription_id_map must match the subscriptions in delivery.azure.json. Update both together to prevent helper/provider target drift."
+  }
+}
+
+variable "subscription" {
+  description = "Name of the subscription alias (e.g., hub, spoke, nprd, prd)."
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name (e.g., hub, nprd, dev, test, prd)."
+  type        = string
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{0,19}$", var.environment))
+    error_message = "Use a lowercase environment name with letters, digits and hyphens."
+  }
+}
+
+variable "global_tags" {
+  description = "Global tags applied to all resources."
   type        = map(string)
   default     = {}
 }
-variable "ddos_protection_plan_id" {
-  description = "Existing DDoS plan ID, or null to omit association."
+
+variable "environment_tags" {
+  description = "Environment-specific tags applied to resources."
+  type        = map(string)
+  default     = {}
+}
+
+variable "environment_number" {
+  description = "Compatibility metadata; existing resource names retain the fixed 01 suffix."
+  type        = string
+  default     = "01"
+}
+
+variable "private_dns_zones" {
+  description = "Additional empty private DNS zones. Use private_dns for zones with records."
+  type        = list(string)
+  default     = []
+}
+
+variable "diag_log_workspace" {
+  description = "Log Analytics workspace resource ID. Null disables VNet diagnostics; no workspace is created by this stack."
   type        = string
   default     = null
 }
-variable "log_analytics_workspace_id" {
-  description = "Existing workspace ID, or null to omit VNet diagnostic settings."
+
+variable "backend_container_suffix" {
+  description = "Suffix used by remote-state containers for hub/spoke peering state lookups."
   type        = string
-  default     = null
+  default     = "azdo-tfstate"
 }
+
+variable "remote_state_container_suffix_map" {
+  description = "Optional per-backend override for remote-state container suffixes."
+  type        = map(string)
+  default     = {}
+}
+
 variable "subnets" {
-  description = "Subnets keyed by exact Azure names. Rules and routes are explicit typed values."
-  type = map(object({
-    address_prefixes                  = list(string)
-    service_endpoints                 = optional(set(string), [])
-    default_outbound_access_enabled   = optional(bool, false)
-    private_endpoint_network_policies = optional(string, "Disabled")
-    network_security_group = optional(object({
-      name = string
-      rules = optional(map(object({
-        priority                   = number
-        direction                  = string
-        access                     = string
-        protocol                   = string
-        source_port_range          = optional(string, "*")
-        destination_port_range     = string
-        source_address_prefix      = string
-        destination_address_prefix = optional(string, "*")
-        description                = optional(string)
-      })), {})
-    }))
-    route_table = optional(object({
-      name                          = string
-      bgp_route_propagation_enabled = optional(bool, true)
-      routes = optional(map(object({
-        address_prefix         = string
-        next_hop_type          = string
-        next_hop_in_ip_address = optional(string)
-      })), {})
-    }))
+  description = "List of subnets to be created within the Virtual Network (VNet)."
+  type = list(object({
+    name                                          = string
+    address_prefix                                = string
+    security_group                                = string
+    endpoints                                     = list(string)
+    default_outbound_access_enabled               = optional(bool)
+    private_endpoint_network_policies             = optional(string)
+    private_link_service_network_policies_enabled = optional(bool)
+    service_endpoint_policy_ids                   = optional(list(string), [])
+    bgp_route_propagation_enabled                 = optional(bool, true)
     delegation = optional(object({
       name         = string
       service_name = string
       actions      = optional(list(string), [])
     }))
   }))
-  default  = {}
-  nullable = false
 }
-variable "private_dns_zones" {
-  description = "Private DNS zones to create and link to this VNet with auto-registration disabled."
-  type        = set(string)
+
+variable "dns" {
+  description = "DNS configuration for multiple zones, each with multiple records."
+  type = list(object({
+    zone_name = string
+    a_records = list(object({
+      name = string
+      ip   = string
+    }))
+    cname_records = list(object({
+      name   = string
+      target = string
+    }))
+    mx_records = list(object({
+      preference = number
+      exchange   = string
+    }))
+  }))
+  default = []
+}
+
+variable "private_dns" {
+  description = "Private DNS configuration for multiple zones, each with multiple records."
+  type = list(object({
+    zone_name = string
+    a_records = list(object({
+      name = string
+      ip   = string
+    }))
+    cname_records = list(object({
+      name   = string
+      target = string
+    }))
+    mx_records = list(object({
+      preference = number
+      exchange   = string
+    }))
+  }))
+  default = []
+}
+
+variable "azvdc_network" {
+  description = "Compatibility metadata for firewall/custom DNS configuration; resources do not consume this map."
+  type = map(object({
+    azfw_nic           = string
+    custom_dns_servers = list(string)
+  }))
+  default = {}
+}
+
+variable "vnet_ip_range" {
+  description = "CIDR block for the Virtual Network (VNet) IP range."
+  type        = string
+  validation {
+    condition     = can(cidrnetmask(var.vnet_ip_range))
+    error_message = "vnet_ip_range must be a valid IPv4 CIDR block."
+  }
+}
+
+variable "dns_servers" {
+  description = "List of IP addresses for DNS servers to be used within the VNet."
+  type        = list(string)
   default     = []
-  nullable    = false
+}
+
+variable "secondary_region" {
+  description = "Short region code for the secondary region and shared backend location (for example ukw)."
+  type        = string
+}
+
+variable "primary_region" {
+  description = "Short region code for the primary deployment region (for example uks)."
+  type        = string
+}
+
+variable "acr_config" {
+  description = "Configuration for Azure Container Registry (ACR)."
+  type = object({
+    enabled                  = bool
+    name                     = string
+    sku                      = string
+    admin_enabled            = bool
+    georeplication_locations = optional(list(string), []) # Only used when SKU is Premium
+  })
+  default = {
+    enabled                  = false
+    name                     = ""
+    sku                      = "Standard"
+    admin_enabled            = false
+    georeplication_locations = []
+  }
   validation {
-    condition     = alltrue([for zone in var.private_dns_zones : can(regex("^[A-Za-z0-9][A-Za-z0-9.-]*[A-Za-z0-9]$", zone)) && length(split(".", zone)) > 1])
-    error_message = "Each private DNS zone must be a domain name with at least two labels."
+    condition     = contains(["Basic", "Standard", "Premium"], var.acr_config.sku)
+    error_message = "ACR SKU must be Basic, Standard or Premium."
+  }
+  validation {
+    condition     = length(var.acr_config.georeplication_locations) == 0 || var.acr_config.sku == "Premium"
+    error_message = "ACR georeplication requires Premium SKU."
+  }
+  validation {
+    condition     = !var.acr_config.enabled || can(regex("^[a-zA-Z0-9]{5,50}$", var.acr_config.name))
+    error_message = "An enabled ACR requires a globally unique, 5-50 character alphanumeric name."
   }
 }
-variable "peerings" {
-  description = "Local-side peerings keyed by peering name. Remote-side peering is separately managed."
-  type = map(object({
-    remote_virtual_network_id    = string
-    triggers                     = optional(map(string), {})
-    allow_virtual_network_access = optional(bool, true)
-    allow_forwarded_traffic      = optional(bool, false)
-    allow_gateway_transit        = optional(bool, false)
-    use_remote_gateways          = optional(bool, false)
-  }))
-  default  = {}
-  nullable = false
-  validation {
-    condition     = alltrue([for p in values(var.peerings) : can(regex("(?i)^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/Microsoft.Network/virtualNetworks/[^/]+$", p.remote_virtual_network_id)) && !(p.allow_gateway_transit && p.use_remote_gateways)])
-    error_message = "Peerings require a VNet resource ID and cannot both offer and use gateway transit."
-  }
-  validation {
-    condition     = length([for p in values(var.peerings) : p if p.use_remote_gateways]) <= 1
-    error_message = "Only one peering can use a remote gateway."
-  }
-}
+
 variable "private_endpoints" {
-  description = "Private endpoints into an owned subnet; optional zone names must appear in private_dns_zones."
-  type = map(object({
-    subnet_name            = string
-    target_resource_id     = string
-    subresource_names      = list(string)
-    private_dns_zone_names = optional(set(string), [])
-    is_manual_connection   = optional(bool, false)
-    request_message        = optional(string)
+  description = "List of private endpoints to be created in the VNet."
+  type = list(object({
+    name                  = string
+    resource_id           = string
+    service_connection    = string
+    private_dns_zone_name = string
+    subnet_name           = string
   }))
-  default  = {}
-  nullable = false
+  default = []
   validation {
-    condition     = alltrue([for ep in values(var.private_endpoints) : ep.request_message == null ? true : ep.is_manual_connection && length(ep.request_message) <= 140])
-    error_message = "Request messages are for manual connections only and must be at most 140 characters."
+    condition     = length(distinct([for endpoint in var.private_endpoints : endpoint.name])) == length(var.private_endpoints)
+    error_message = "Private endpoint names must be unique."
   }
   validation {
-    condition     = alltrue([for ep in values(var.private_endpoints) : try(var.subnets[ep.subnet_name].delegation == null, false)])
-    error_message = "Private endpoints require a non-delegated subnet."
-  }
-  validation {
-    condition     = alltrue([for ep in values(var.private_endpoints) : contains(keys(var.subnets), ep.subnet_name)])
-    error_message = "Every private endpoint must reference a subnet defined in subnets."
-  }
-  validation {
-    condition     = alltrue([for ep in values(var.private_endpoints) : length(setsubtract(ep.private_dns_zone_names, var.private_dns_zones)) == 0])
-    error_message = "Private endpoint DNS zones must be created by this module."
-  }
-  validation {
-    condition     = alltrue([for ep in values(var.private_endpoints) : length(ep.subresource_names) > 0 && alltrue([for name in ep.subresource_names : trimspace(name) != ""]) && can(regex("(?i)^/subscriptions/[^/]+/resourceGroups/[^/]+/providers/[^/]+/.+$", ep.target_resource_id))])
-    error_message = "Private endpoints require an Azure resource ID and nonempty service subresource names."
+    condition     = alltrue([for endpoint in var.private_endpoints : contains([for subnet in var.subnets : subnet.name], endpoint.subnet_name)])
+    error_message = "Each private endpoint must reference a logical name from subnets."
   }
 }

@@ -1,70 +1,96 @@
 # Azure network foundation
 
-[![Terraform CI](https://github.com/MikeeeGit/azure-network-foundation/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MikeeeGit/azure-network-foundation/actions/workflows/ci.yml)
+[![Terraform CI](https://github.com/MikeeeGit/azure-network-foundation/actions/workflows/ci.yml/badge.svg)](https://github.com/MikeeeGit/azure-network-foundation/actions/workflows/ci.yml)
 
-An example deployment of reusable Azure networking modules, with separate state and configuration for each environment. It creates a resource group and a virtual network, explicit subnets, optional NSGs/routes, private DNS, local-side peering and private endpoints.
+Deploy repeatable Azure networks using environment/region configuration, CSV network policies and shared Terraform delivery workflows.
 
-This project demonstrates Terraform module design and delivery through GitHub Actions and Azure Pipelines. All committed environment values are synthetic. The public CI checks run without Azure credentials.
+This is the public edition of **AZ-TF-azvdc**. It retains the original direct VNet/subnet module composition, naming conventions, two resource groups, hub/spoke topology, central private DNS, optional private endpoints and ACR. All included configuration is synthetic. Apache-2.0 licensed.
 
-## Repository family
+## Start here
 
-| Repository | Responsibility |
-| --- | --- |
-| [terraform-delivery-templates](https://github.com/MikeeeGit/terraform-delivery-templates) | Reusable validation and delivery building blocks for GitHub Actions and Azure Pipelines; Azure and AWS authentication examples |
-| **azure-network-foundation** | Environment-facing Azure deployment, provider and backend configuration |
-| [terraform-azurerm-network-foundation](https://github.com/MikeeeGit/terraform-azurerm-network-foundation) | Composition of network features |
-| [terraform-azurerm-vnet](https://github.com/MikeeeGit/terraform-azurerm-vnet) | Focused virtual network module |
-| [terraform-azurerm-subnets](https://github.com/MikeeeGit/terraform-azurerm-subnets) | Typed subnet, NSG, route and delegation configuration |
+1. Follow the [from-zero Azure setup guide](https://github.com/MikeeeGit/terraform-delivery-templates/blob/v0.2.0/docs/getting-started.md) to bootstrap state storage and configure identities.
+2. Clone this repository and [terraform-delivery-templates](https://github.com/MikeeeGit/terraform-delivery-templates).
+3. Replace the synthetic tenant/subscription IDs and choose globally unique storage names in `delivery.azure.json`. Set matching workload IDs in `config/global.tfvars`.
+4. Update the explicit remote-state coordinates in each environment's `remote_networks` to match those backend names.
+5. Review [configuration](docs/configuration.md), the CSVs and [deployment order](docs/deployment.md) before planning.
+
+Terraform **1.16.3** is the tested CLI; the configuration supports Terraform >=1.9,<2 and AzureRM >=4.33,<5. Provider checksums are committed.
+
+```bash
+git clone https://github.com/MikeeeGit/terraform-delivery-templates.git
+git clone https://github.com/MikeeeGit/azure-network-foundation.git
+cd azure-network-foundation
+az login --tenant <your-tenant-id>
+source ../terraform-delivery-templates/scripts/azure/terraform-functions.sh
+tf_setup azure-network-foundation hub uks
+tf_init
+tf_plan
+tf_apply
+```
+
+PowerShell exposes the same commands by dot-sourcing `scripts/azure/terraform-functions.ps1`. The helpers resolve delivery configuration, verify targeting, use the global/environment tfvars in order, save plans and prompt before apply. See the shared guide for CI service connections, federation and Windows/WSL setup.
+
+The public repository's own CI runs credential-free validation and mocked tests. Authenticated plan/apply examples are intended for a private deployment copy with its own state and identities.
+
+## Architecture
 
 ```mermaid
 flowchart TD
-  PR[Pull request] --> CI[Credential-free validation and mock tests]
-  Config[Private environment configuration] --> Root[Azure network foundation]
-  Root --> Network[Network composition module]
-  Network --> VNet[VNet module]
-  Network --> Subnets[Subnet module]
-  Network --> Optional[Optional DNS / peering / endpoints]
+  G[Global tfvars] --> R[Environment and region root]
+  E[Environment tfvars] --> R
+  D[Delivery configuration] --> H[Local helpers or trusted CI]
+  H --> R
+  R --> N[Network resource group]
+  R --> V[VNet resource group]
+  V --> VM[terraform-azurerm-vnet]
+  V --> SM[terraform-azurerm-subnets]
+  C[Subnet CSV policies] --> SM
+  R --> P[Explicit remote-state peerings]
+  R --> EP[Private endpoints using central hub DNS]
+  N --> A[Optional container registry]
 ```
 
-## Validate without a subscription
+The separate [network composition module](https://github.com/MikeeeGit/terraform-azurerm-network-foundation) is available to other consumers. This stack retains direct calls to the [VNet](https://github.com/MikeeeGit/terraform-azurerm-vnet) and [subnet](https://github.com/MikeeeGit/terraform-azurerm-subnets) modules.
 
-Requires the Terraform version in `.terraform-version`.
+## Included examples
 
-```sh
+| Region | Environment | Subscription alias | VNet example |
+|---|---|---|---|
+| uks / UK South | hub | hub | 10.60.0.0/16 |
+| uks / UK South | pprd | pprd | 10.61.0.0/16 |
+| uks / UK South | prd | prd | 10.62.0.0/16 |
+| ukw / UK West | hub | hub | 10.70.0.0/16 |
+| ukw / UK West | bcdr | prd | 10.71.0.0/16 |
+
+The examples preserve the original five-target/26-subnet configuration shape with newly authored policy data. They create subnet reservations for gateway/firewall services; they do not deploy those services. Review DNS zone costs and any optional services before applying.
+
+## Capabilities
+
+- Convention-derived names and independent network/VNet resource groups.
+- Global defaults with environment overrides; any Azure region with an explicit short code.
+- CSV-driven NSGs and routes, logical subnet outputs and reserved Azure subnet names.
+- Public/private DNS zones and A/CNAME/MX records, private DNS links, custom DNS and optional DDoS association.
+- Explicit multi-subscription/region peering topology and a first-deployment phase.
+- Central hub DNS for private endpoints, with optional spoke zone links.
+- Optional ACR, including Premium georeplication.
+- Optional Log Analytics diagnostics; no embedded estate workspace.
+
+## Documentation and validation
+
+- [Configuration and CSV policy](docs/configuration.md)
+- [Deployment order and daily operations](docs/deployment.md)
+- [GitHub/Azure DevOps deployment caller examples](examples/delivery/README.md)
+- [Public-copy provenance and compatibility](docs/migration.md)
+- [Publishing and two-host workflow](docs/publishing.md)
+- [Change log](CHANGELOG.md)
+
+```bash
 terraform fmt -check -recursive
-terraform init -backend=false -lockfile=readonly
+terraform init -backend=false
 terraform validate
 terraform test
 ```
 
-The tests use mocked providers. No cloud deployment, routing, egress, private endpoint connectivity or DNS resolution is implied by a passing result.
+Tests use mock providers and overridden remote-state data. They do not prove Azure permissions, real provider API behavior or a live deployment. A sandbox deployment should be recorded separately when performed.
 
-## Deploy your own environment
-
-Use a private deployment repository/project for real inputs, state, plan output and artifacts. Never enable cloud credentials in public pull-request jobs.
-
-1. Bootstrap a dedicated Azure Storage state backend with Microsoft Entra authentication, least-privilege blob access, state locking, recovery controls and suitable network restrictions. Register the resource providers used by your configuration.
-2. Configure a scoped workload identity for CI, or sign in locally with Azure CLI. Set `ARM_SUBSCRIPTION_ID` explicitly. The backend may use a separate subscription; supply its ID in backend config.
-3. Copy `environments/example.tfvars.example` and `environments/backend.azurerm.hcl.example` to ignored local files and replace the synthetic names/CIDRs.
-4. Initialize and create a saved plan:
-
-```sh
-terraform init -reconfigure -backend-config=environments/backend.azurerm.hcl
-terraform plan -lock-timeout=5m -var-file=environments/dev.tfvars -out=network.tfplan
-# Review the plan in the same private workspace before this explicit action:
-terraform apply network.tfplan
-```
-
-State locking stays enabled. Plans can contain sensitive values; keep them private and short-lived. Use a unique backend key per environment and serialize deployments to each key. Choose non-overlapping CIDRs with your IPAM policy. Optional private DNS, endpoints, diagnostics and DDoS association can incur charges. Workload outbound connectivity is explicit; this stack does not provision a NAT Gateway or firewall.
-
-## Design and scope
-
-[variables.tf](variables.tf) is the full configuration contract. Names, tags and regions are caller supplied; the implementation has no assumptions about a particular organisation or subscription.
-
-This is a redesigned successor to AZ-TF-azvdc, not a state-compatible rename. See [migration notes](docs/migration.md) before considering an existing deployment. ACR, public DNS, firewalls, gateways and tenant bootstrap remain separate concerns. Multi-subscription hub/spoke composition requires explicit provider aliases and reciprocal peering ownership; the starter deploys one network in one subscription.
-
-GitHub is the public collaboration host. Azure Repos is a private counterpart: Microsoft has retired creation of new public Azure DevOps projects and will convert existing public projects during 2027. See [Microsoft's retirement notice](https://learn.microsoft.com/en-us/azure/devops/organizations/projects/public-projects-retirement?view=azure-devops).
-
-## Contributing and licence
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md). Licensed under [Apache-2.0](LICENSE).
+Public source: [GitHub](https://github.com/MikeeeGit/azure-network-foundation). Matching repository: [Azure DevOps](https://dev.azure.com/Mrmichaelflynn/AzureInfraCode/_git/azure-network-foundation), which requires project access.

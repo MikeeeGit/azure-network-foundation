@@ -1,0 +1,8 @@
+# Copy to ignored backend.local.hcl and replace every synthetic value.
+# The state account can be in a separate subscription from all workload VNets.
+subscription_id = "00000000-0000-0000-0000-000000000001"
+resource_group_name = "example-tfstate-rg"
+storage_account_name = "exampletfstateunique"
+container_name = "tfstate"
+key = "hub-spoke-aks-egress.tfstate"
+use_azuread_auth = true

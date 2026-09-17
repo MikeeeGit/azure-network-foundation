@@ -40,3 +40,9 @@ __pycache__/
 
 # Shared helper context, saved plans and private manifests.
 .terraform-delivery/
+
+# Reviewed hub/spoke scenario configuration.
+!examples/hub-spoke/config/global.tfvars
+!examples/hub-spoke/config/uks/hub/hub.tfvars
+!examples/hub-spoke/config/uks/pprd/pprd.tfvars
+!examples/hub-spoke/config/uks/prd/prd.tfvars

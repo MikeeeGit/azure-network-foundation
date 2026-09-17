@@ -77,3 +77,11 @@ Private endpoints use logical subnet keys and look up external zones in the hub 
 ACR is disabled by default. Georeplication is implemented when `acr_config.sku="Premium"`; non-Premium replication is rejected. Admin credentials are disabled in the example. Registry names must be globally unique.
 
 See [deployment](deployment.md) for topology ownership and first-run ordering.
+
+## Complete scenario configuration
+
+The [hub/spoke configuration pack](../examples/hub-spoke/README.md) provides dedicated aks01, aks02 and appgateway subnet keys in each spoke. Additional hub_private_dns_zone_names create central-zone links independently of private endpoints. The managed_private_dns_zone_ids output exposes zones owned by the selected network; the earlier private_dns_zone_ids endpoint map keeps its original meaning.
+
+subnet_config_root is an optional CSV directory override for isolated examples/tests. Leave it null after copying an example configuration into the private consumer's config directory.
+
+The selected subscription alias must also match the environment entry in delivery.azure.json. Update the target map and reviewed tfvars together before planning.

@@ -54,6 +54,9 @@ The separate [network composition module](https://github.com/MikeeeGit/terraform
 
 ## Included examples
 
+For the complete worked topology, start with [hub and two spokes, dual-AKS subnets, private DNS and optional firewall egress](examples/hub-spoke/README.md). The baseline configurations below remain available.
+
+
 | Region | Environment | Subscription alias | VNet example |
 |---|---|---|---|
 | uks / UK South | hub | hub | 10.60.0.0/16 |

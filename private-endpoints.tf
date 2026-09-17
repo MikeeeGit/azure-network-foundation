@@ -26,11 +26,11 @@ resource "azurerm_private_endpoint" "endpoints" {
   tags = local.tags
 }
 
-# Opt in when this stack owns the spoke links. Leave off for existing links or
-# resolver/forwarding designs; a zone group alone does not give clients DNS resolution.
+# Opt in when this stack owns the spoke links. Additional named zones support
+# private AKS APIs and internal application names before any private endpoint exists.
 resource "azurerm_private_dns_zone_virtual_network_link" "endpoint_spoke" {
   provider              = azurerm.hub
-  for_each              = var.link_endpoint_dns_zones ? setsubtract(local.endpoint_dns_zones, local.owned_endpoint_zones) : toset([])
+  for_each              = setsubtract(setunion(var.hub_private_dns_zone_names, var.link_endpoint_dns_zones ? local.endpoint_dns_zones : toset([])), local.owned_endpoint_zones)
   name                  = "${local.label}-${replace(each.value, ".", "-")}"
   resource_group_name   = local.hub_resource_group
   private_dns_zone_name = each.value
@@ -41,7 +41,7 @@ resource "azurerm_private_dns_zone_virtual_network_link" "endpoint_spoke" {
   lifecycle {
     precondition {
       condition     = var.environment != "hub"
-      error_message = "Hub zone links are owned by the VNet module. Enable endpoint_spoke links only for spoke environments."
+      error_message = "Hub zone links are owned by the VNet module. Configure additional hub zone links only for spoke environments."
     }
   }
 }

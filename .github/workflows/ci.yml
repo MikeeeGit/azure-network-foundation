@@ -36,3 +36,25 @@ jobs:
       var-files: |
         config/global.tfvars
         config/${{ matrix.region }}/${{ matrix.environment }}/${{ matrix.environment }}.tfvars
+
+  hub-spoke:
+    name: Hub-spoke ${{ matrix.environment }}
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [hub, pprd, prd]
+    uses: MikeeeGit/terraform-delivery-templates/.github/workflows/terraform-validate.yml@472c0c5bebe7f07aca8c51c7fabf0a47280a0b25
+    with:
+      template-ref: 472c0c5bebe7f07aca8c51c7fabf0a47280a0b25
+      directory: .
+      test-directory: tests/hub-spoke
+      var-files: |
+        examples/hub-spoke/config/global.tfvars
+        examples/hub-spoke/config/uks/${{ matrix.environment }}/${{ matrix.environment }}.tfvars
+  egress:
+    name: Hub firewall egress
+    uses: MikeeeGit/terraform-delivery-templates/.github/workflows/terraform-validate.yml@472c0c5bebe7f07aca8c51c7fabf0a47280a0b25
+    with:
+      template-ref: 472c0c5bebe7f07aca8c51c7fabf0a47280a0b25
+      directory: examples/hub-spoke/egress
+      test-directory: tests

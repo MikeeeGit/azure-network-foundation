@@ -49,8 +49,12 @@ variable "subscription_id_map" {
 }
 
 variable "subscription" {
-  description = "Name of the subscription alias (e.g., hub, spoke, nprd, prd)."
+  description = "Subscription alias selected for this environment in delivery.azure.json."
   type        = string
+  validation {
+    condition     = try(jsondecode(file("${path.root}/delivery.azure.json")).environments[var.environment].subscription_alias == var.subscription, false)
+    error_message = "subscription must match the environment subscription_alias in delivery.azure.json."
+  }
 }
 
 variable "environment" {

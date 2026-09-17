@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0
+
+- Add a complete hub and two-spoke configuration pack with dual-AKS, gateway and private-endpoint subnets.
+- Add an optional Azure Firewall egress stack with staged AKS route attachment and actual firewall next hops.
+- Allow spokes to link hub private DNS zones without creating private endpoints.
+- Expose zone-name keyed DNS outputs while preserving existing endpoint-keyed outputs.
+- Allow an explicit CSV configuration root and reject environment/subscription alias drift.
+- Test the published configurations, DNS behavior and egress topology with mocked providers.
+
+Existing inputs keep their defaults. The expanded pack uses new address spaces; use new state or a reviewed migration when adopting it for an existing deployment. These tests do not establish live Azure connectivity.
+
 ## 0.2.0
 
 Rebuild the public stack from the reviewed AZ-TF-azvdc architecture.

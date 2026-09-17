@@ -1,0 +1,6 @@
+name,priority,direction,access,protocol,source_port_range,destination_port_range,source_address_prefix,destination_address_prefix
+AllowWebClientsHttp,100,Inbound,Allow,Tcp,*,80,Internet,*
+AllowWebClientsHttps,101,Inbound,Allow,Tcp,*,443,Internet,*
+AllowGatewayManager,110,Inbound,Allow,Tcp,*,65200-65535,GatewayManager,*
+AllowLoadBalancer,120,Inbound,Allow,*,*,*,AzureLoadBalancer,*
+AllowGatewayOutbound,130,Outbound,Allow,*,*,*,*,Internet

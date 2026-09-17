@@ -290,3 +290,40 @@ run "rejects_subscription_map_drift_from_delivery_configuration" {
   }
   expect_failures = [var.subscription_id_map]
 }
+
+run "link_hub_zones_without_private_endpoints" {
+  command = plan
+  variables {
+    hub_private_dns_zone_names = ["internal.example", "privatelink.uksouth.azmk8s.io"]
+  }
+  assert {
+    condition     = length(azurerm_private_endpoint.endpoints) == 0 && length(output.hub_private_dns_zone_link_ids) == 2
+    error_message = "A spoke can resolve central private application and AKS API zones before creating endpoints."
+  }
+}
+run "deduplicate_endpoint_and_additional_zone_links" {
+  command = plan
+  variables {
+    hub_private_dns_zone_names = ["privatelink.blob.core.windows.net"]
+    link_endpoint_dns_zones    = true
+    private_endpoints = [{
+      name                  = "example-storage"
+      subnet_name           = "web"
+      private_dns_zone_name = "privatelink.blob.core.windows.net"
+      resource_id           = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/example/providers/Microsoft.Storage/storageAccounts/examplestorage"
+      service_connection    = "blob"
+    }]
+  }
+  assert {
+    condition     = length(output.hub_private_dns_zone_link_ids) == 1
+    error_message = "Explicit central-zone links and endpoint links must have one state owner."
+  }
+}
+
+run "rejects_environment_subscription_mismatch" {
+  command = plan
+  variables {
+    subscription = "hub"
+  }
+  expect_failures = [var.subscription]
+}

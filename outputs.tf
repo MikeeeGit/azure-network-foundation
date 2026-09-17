@@ -12,6 +12,16 @@ output "private_dns_zone_ids" {
   value = local.endpoint_zone_ids
 }
 
+output "managed_private_dns_zone_ids" {
+  description = "DNS zones created by this network, keyed by zone name. Pass the hub's AKS/private application zone IDs to workload consumers."
+  value       = module.vnet.private_dns_zone_ids
+}
+
+output "hub_private_dns_zone_link_ids" {
+  description = "Hub-owned private DNS zone links managed by this spoke."
+  value       = { for name, link in azurerm_private_dns_zone_virtual_network_link.endpoint_spoke : name => link.id }
+}
+
 output "subnet_name_to_id" {
   value = local.subnet_name_to_id
 }

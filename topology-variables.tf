@@ -46,3 +46,20 @@ variable "link_endpoint_dns_zones" {
   type        = bool
   default     = false
 }
+
+variable "hub_private_dns_zone_names" {
+  description = "Additional existing hub-owned DNS zones to link to this spoke, independently of private endpoints. Create the hub zones first; this stack owns only its VNet links."
+  type        = set(string)
+  default     = []
+
+  validation {
+    condition     = alltrue([for zone in var.hub_private_dns_zone_names : length(trimspace(zone)) > 0 && !strcontains(zone, "/")])
+    error_message = "Use non-empty DNS zone names, not resource IDs."
+  }
+}
+
+variable "subnet_config_root" {
+  description = "Optional CSV configuration directory. Null preserves config/<region>/<environment>; examples use an isolated configuration pack."
+  type        = string
+  default     = null
+}

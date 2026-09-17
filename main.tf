@@ -41,6 +41,7 @@ module "subnets" {
   environment          = var.environment
   vnet_suffix          = ""
   tags                 = local.tags
+  config_root          = var.subnet_config_root
 }
 
 resource "azurerm_container_registry" "acr" {

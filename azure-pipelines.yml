@@ -57,3 +57,32 @@ jobs:
       varFiles: |
         config/global.tfvars
         config/ukw/bcdr/bcdr.tfvars
+  - template: azure-pipelines/jobs/terraform-validate.yml@deliveryTemplates
+    parameters:
+      jobName: HubSpoke_hub
+      directory: .
+      testDirectory: tests/hub-spoke
+      varFiles: |
+        examples/hub-spoke/config/global.tfvars
+        examples/hub-spoke/config/uks/hub/hub.tfvars
+  - template: azure-pipelines/jobs/terraform-validate.yml@deliveryTemplates
+    parameters:
+      jobName: HubSpoke_pprd
+      directory: .
+      testDirectory: tests/hub-spoke
+      varFiles: |
+        examples/hub-spoke/config/global.tfvars
+        examples/hub-spoke/config/uks/pprd/pprd.tfvars
+  - template: azure-pipelines/jobs/terraform-validate.yml@deliveryTemplates
+    parameters:
+      jobName: HubSpoke_prd
+      directory: .
+      testDirectory: tests/hub-spoke
+      varFiles: |
+        examples/hub-spoke/config/global.tfvars
+        examples/hub-spoke/config/uks/prd/prd.tfvars
+  - template: azure-pipelines/jobs/terraform-validate.yml@deliveryTemplates
+    parameters:
+      jobName: HubFirewallEgress
+      directory: examples/hub-spoke/egress
+      testDirectory: tests

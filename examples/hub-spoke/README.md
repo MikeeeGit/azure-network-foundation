@@ -38,6 +38,8 @@ Peering alone does not provide spoke-to-spoke transit. The route add-on supplies
 
 ## 1. Prepare a private consumer
 
+For the complete first Azure rehearsal, follow the [sandbox deployment runbook](https://github.com/MikeeeGit/terraform-delivery-templates/blob/main/docs/azure/sandbox-deployment.md), including private management access, certificates, budget and teardown.
+
 Use a new private copy of this repository and new state. This pack changes address spaces and subnet names relative to the basic configuration; copying it over an existing deployment requires a separate reviewed migration.
 
 From the private consumer root:
@@ -88,7 +90,9 @@ Use the public AKS and Application Gateway examples linked from the [scenario gu
 
 Export the selected network's subnet_ids, subnet_address_prefixes and vnet outputs. Obtain the hub's managed_private_dns_zone_ids output for its private AKS API zone. Prefer explicit reviewed resource IDs; remote-state readers also gain access to the underlying state and need blob permissions.
 
-For the illustrative pprd pair, reserve internal ingress addresses 10.81.0.20 and 10.81.4.20 in the corresponding AKS subnets. The infrastructure modules do not install application Services. The [sample application](https://github.com/MikeeeGit/aks-platform-demo) uses shared Kustomize delivery to create its own internal LoadBalancer Service at each reserved address. It can connect directly to Application Gateway without an ingress controller. For multiple applications, choose and operate an appropriate controller separately. Verify the backend endpoint in each cluster before pointing the gateway at it.
+For the maintained Gateway API PPRD profile, reserve **10.81.0.21 and 10.81.4.21** in the corresponding AKS subnets. The independently installed [Envoy platform profile](https://github.com/MikeeeGit/aks-delivery-templates/tree/main/examples/platform-envoy) owns those internal HTTPS LoadBalancer Services. The [sample application](https://github.com/MikeeeGit/aks-platform-demo) owns a ClusterIP Service and HTTPRoute. Either pipeline-driven Kustomize delivery or the additional [Argo CD method](https://github.com/MikeeeGit/aks-delivery-templates/blob/main/docs/delivery-methods.md) can manage the app; choose one owner per app/slot. The network and AKS Terraform roots do not allocate these frontend addresses themselves.
+
+The retained simpler direct-Service profile instead owns **10.81.0.20 and 10.81.4.20** and connects to Application Gateway over HTTP without an in-cluster controller. These are separate profiles, not interchangeable addresses. Use the [HTTPS-first gateway example](https://github.com/MikeeeGit/azure-application-gateway/tree/main/examples/https-first) for a new Envoy deployment; use the migration example only when retaining an existing `.20` endpoint. Verify each actual endpoint before pointing the gateway at it.
 
 Create the gateway only after its backend, certificate secret, identity access, DNS and probe settings are ready. Keep gateway subnet routing separate from AKS UDRs. The CSV permits HTTP/HTTPS clients, the GatewayManager control-plane range and Azure Load Balancer probes, with Internet outbound for this public/private frontend baseline. Other default NSG rules still apply; the example is not a complete workload isolation policy.
 

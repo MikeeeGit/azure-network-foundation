@@ -3,7 +3,9 @@
 ## 0.3.0
 
 - Add a complete hub and two-spoke configuration pack with dual-AKS, gateway and private-endpoint subnets.
-- Add an optional Azure Firewall egress stack with staged AKS route attachment and actual firewall next hops.
+- Add shared-pipeline delivery configuration and target binding for the route-only state.
+- Enable a shared example ACR with admin access disabled and expose its login server.
+- Add staged AKS route attachment that reads actual next hops from the separately owned Azure Firewall stack.
 - Allow spokes to link hub private DNS zones without creating private endpoints.
 - Expose zone-name keyed DNS outputs while preserving existing endpoint-keyed outputs.
 - Allow an explicit CSV configuration root and reject environment/subscription alias drift.

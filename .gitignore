@@ -46,3 +46,5 @@ __pycache__/
 !examples/hub-spoke/config/uks/hub/hub.tfvars
 !examples/hub-spoke/config/uks/pprd/pprd.tfvars
 !examples/hub-spoke/config/uks/prd/prd.tfvars
+
+!examples/hub-spoke/egress/config/**/*.tfvars

@@ -29,7 +29,6 @@ resource "azurerm_subnet_route_table_association" "pprd_aks" {
   for_each       = var.enable_aks_routes ? var.pprd.aks_subnets : {}
   subnet_id      = each.value.id
   route_table_id = azurerm_route_table.pprd[each.key].id
-  depends_on     = [azurerm_firewall_policy_rule_collection_group.aks]
 }
 
 
@@ -64,5 +63,4 @@ resource "azurerm_subnet_route_table_association" "prd_aks" {
   for_each       = var.enable_aks_routes ? var.prd.aks_subnets : {}
   subnet_id      = each.value.id
   route_table_id = azurerm_route_table.prd[each.key].id
-  depends_on     = [azurerm_firewall_policy_rule_collection_group.aks]
 }

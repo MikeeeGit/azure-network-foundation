@@ -42,3 +42,12 @@ remote_networks = {
     allow_forwarded_traffic = true
   }
 }
+
+# Shared sample image registry; replace this globally unique name before deployment.
+# Standard uses authenticated public endpoints. Private-link registry designs need Premium.
+acr_config = {
+  enabled       = true
+  name          = "exampleplatformacr"
+  sku           = "Standard"
+  admin_enabled = false
+}

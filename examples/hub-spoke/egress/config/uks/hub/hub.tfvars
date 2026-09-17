@@ -1,21 +1,24 @@
+# Synthetic reviewed hub target; replace every resource ID using applied outputs.
+environment          = "hub"
+location_abbreviated = "uks"
 # Synthetic shape only. Replace all IDs and prefixes with actual network outputs.
 # Copy the actual firewall_id output from the separately applied azure-firewall stack.
 firewall_id = "/subscriptions/00000000-0000-0000-0000-000000000002/resourceGroups/uks-hub-vnet-rg-01/providers/Microsoft.Network/azureFirewalls/uks-hub-azfw"
 pprd = {
-  subscription_id = "00000000-0000-0000-0000-000000000003"
+  subscription_id     = "00000000-0000-0000-0000-000000000003"
   resource_group_name = "uks-pprd-vnet-rg-01"
-  vnet_id = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/uks-pprd-vnet-rg-01/providers/Microsoft.Network/virtualNetworks/uks-pprd-vnet-01"
-  address_space = ["10.81.0.0/16"]
+  vnet_id             = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/uks-pprd-vnet-rg-01/providers/Microsoft.Network/virtualNetworks/uks-pprd-vnet-01"
+  address_space       = ["10.81.0.0/16"]
   aks_subnets = {
     aks01 = { id = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/uks-pprd-vnet-rg-01/providers/Microsoft.Network/virtualNetworks/uks-pprd-vnet-01/subnets/uks-pprd-aks01", address_prefix = "10.81.0.0/22" }
     aks02 = { id = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/uks-pprd-vnet-rg-01/providers/Microsoft.Network/virtualNetworks/uks-pprd-vnet-01/subnets/uks-pprd-aks02", address_prefix = "10.81.4.0/22" }
   }
 }
 prd = {
-  subscription_id = "00000000-0000-0000-0000-000000000004"
+  subscription_id     = "00000000-0000-0000-0000-000000000004"
   resource_group_name = "uks-prd-vnet-rg-01"
-  vnet_id = "/subscriptions/00000000-0000-0000-0000-000000000004/resourceGroups/uks-prd-vnet-rg-01/providers/Microsoft.Network/virtualNetworks/uks-prd-vnet-01"
-  address_space = ["10.82.0.0/16"]
+  vnet_id             = "/subscriptions/00000000-0000-0000-0000-000000000004/resourceGroups/uks-prd-vnet-rg-01/providers/Microsoft.Network/virtualNetworks/uks-prd-vnet-01"
+  address_space       = ["10.82.0.0/16"]
   aks_subnets = {
     aks01 = { id = "/subscriptions/00000000-0000-0000-0000-000000000004/resourceGroups/uks-prd-vnet-rg-01/providers/Microsoft.Network/virtualNetworks/uks-prd-vnet-01/subnets/uks-prd-aks01", address_prefix = "10.82.0.0/22" }
     aks02 = { id = "/subscriptions/00000000-0000-0000-0000-000000000004/resourceGroups/uks-prd-vnet-rg-01/providers/Microsoft.Network/virtualNetworks/uks-prd-vnet-01/subnets/uks-prd-aks02", address_prefix = "10.82.4.0/22" }

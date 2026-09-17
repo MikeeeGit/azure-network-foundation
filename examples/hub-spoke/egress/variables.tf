@@ -8,45 +8,22 @@ variable "name_prefix" {
   }
 }
 variable "location" {
-  description = "Azure region of all three existing networks."
+  description = "Azure region of the two existing spoke networks."
   type        = string
   default     = "uksouth"
 }
-variable "hub" {
-  description = "Existing hub subscription, resource group and dedicated AzureFirewallSubnet ID, taken from network outputs."
-  type = object({
-    subscription_id     = string
-    resource_group_name = string
-    firewall_subnet_id  = string
-  })
+variable "firewall_id" {
+  description = "Applied azure-firewall output firewall_id. This stack reads the actual firewall; it never accepts a guessed next-hop IP."
+  type        = string
   validation {
-    condition     = can(regex("^[0-9a-fA-F-]{36}$", var.hub.subscription_id)) && startswith(lower(var.hub.firewall_subnet_id), "/subscriptions/${lower(var.hub.subscription_id)}/resourcegroups/") && endswith(lower(var.hub.firewall_subnet_id), "/subnets/azurefirewallsubnet")
-    error_message = "Hub must identify its actual subscription and a subnet named AzureFirewallSubnet in that subscription."
+    condition     = can(regex("^/subscriptions/[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}/resourceGroups/[^/]+/providers/Microsoft.Network/azureFirewalls/[^/]+$", var.firewall_id))
+    error_message = "Supply the full Azure Firewall resource ID from the applied firewall stack."
   }
 }
 variable "enable_aks_routes" {
   description = "Attach the four AKS subnet route tables only after hub/spoke peerings, firewall DNS and NSGs have been reviewed."
   type        = bool
   default     = false
-}
-variable "allow_cross_spoke_https" {
-  description = "Allow TCP443 between the dedicated PPRD and PRD AKS subnet ranges through the firewall. Defaults to no cross-environment firewall access."
-  type        = bool
-  default     = false
-}
-variable "allow_legacy_ntp" {
-  description = "Optional UDP123 to ntp.ubuntu.com for legacy nodes. Modern private AKS nodes do not require this rule."
-  type        = bool
-  default     = false
-}
-variable "additional_registry_fqdns" {
-  description = "Explicit extra registry/authentication/CDN hostnames for HTTPS image pulls. AKS platform endpoints come from the AzureKubernetesService tag. No arbitrary wildcard Internet rule."
-  type        = set(string)
-  default     = []
-  validation {
-    condition     = alltrue([for fqdn in var.additional_registry_fqdns : can(regex("^(\\*\\.)?[a-zA-Z0-9][a-zA-Z0-9.-]*\\.[a-zA-Z]{2,}$", fqdn))])
-    error_message = "Use hostnames (optionally a leading *. subdomain wildcard), without schemes, paths, ports or an unrestricted *."
-  }
 }
 variable "tags" {
   description = "Tags on resources created by this example."
@@ -64,7 +41,7 @@ variable "pprd" {
     aks_subnets         = map(object({ id = string, address_prefix = string }))
   })
   validation {
-    condition     = can(regex("^[0-9a-fA-F-]{36}$", var.pprd.subscription_id)) && startswith(lower(var.pprd.vnet_id), "/subscriptions/${lower(var.pprd.subscription_id)}/resourcegroups/") && can(regex("/providers/microsoft.network/virtualnetworks/[^/]+$", lower(var.pprd.vnet_id)))
+    condition     = can(regex("^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$", var.pprd.subscription_id)) && startswith(lower(var.pprd.vnet_id), "/subscriptions/${lower(var.pprd.subscription_id)}/resourcegroups/") && can(regex("/providers/microsoft.network/virtualnetworks/[^/]+$", lower(var.pprd.vnet_id)))
     error_message = "Use an actual VNet resource ID in the specified pprd subscription."
   }
   validation {
@@ -87,7 +64,7 @@ variable "prd" {
     aks_subnets         = map(object({ id = string, address_prefix = string }))
   })
   validation {
-    condition     = can(regex("^[0-9a-fA-F-]{36}$", var.prd.subscription_id)) && startswith(lower(var.prd.vnet_id), "/subscriptions/${lower(var.prd.subscription_id)}/resourcegroups/") && can(regex("/providers/microsoft.network/virtualnetworks/[^/]+$", lower(var.prd.vnet_id)))
+    condition     = can(regex("^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$", var.prd.subscription_id)) && startswith(lower(var.prd.vnet_id), "/subscriptions/${lower(var.prd.subscription_id)}/resourcegroups/") && can(regex("/providers/microsoft.network/virtualnetworks/[^/]+$", lower(var.prd.vnet_id)))
     error_message = "Use an actual VNet resource ID in the specified prd subscription."
   }
   validation {

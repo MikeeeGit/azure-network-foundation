@@ -1,85 +1,66 @@
-# Optional Azure Firewall egress for the four AKS subnets
+# AKS routes through the shared firewall
 
-This standalone Terraform root adds a real Standard Azure Firewall, Standard public IP and Firewall Policy with DNS proxy to the [hub/spoke network pack](../README.md). It prepares one route table for each of the two dedicated AKS subnets in PPRD and PRD. Every next hop comes from the created firewall's computed private address.
+This standalone Terraform root connects the four dedicated AKS subnets to an **already deployed** VNet Azure Firewall. The separate [azure-firewall](https://github.com/MikeeeGit/azure-firewall) repository owns the firewall, public IPs, inherited policies and rule collections. This root owns only the four route tables and their optional AKS subnet associations.
 
-It uses a separate backend key and explicit `azurerm.hub`, `azurerm.pprd` and `azurerm.prd` provider aliases. Network states continue to own VNets, subnets, NSGs, peering and DNS links. This state owns the firewall, policy, four route tables and their optional associations. It does not create AKS clusters, Application Gateway, a gateway or a DNS resolver VM.
+Supply the applied firewall resource ID. The hub provider reads the actual firewall from Azure and routes use its returned private IP, so a copied example address cannot silently become the next hop. A virtual-hub firewall is not supported by this VNet example.
 
-```mermaid
-flowchart LR
-  P1[PPRD aks01] -->|default + PRD ranges| FW[Hub Azure Firewall]
-  P2[PPRD aks02] -->|default + PRD ranges| FW
-  R1[PRD aks01] -->|default + PPRD ranges| FW
-  R2[PRD aks02] -->|default + PPRD ranges| FW
-  FW -->|approved application destinations| Internet
-  P1 -. DNS proxy .-> FW
-  R1 -. DNS proxy .-> FW
-  FW -. linked private zones .-> DNS[Azure DNS]
-```
+## Inputs and ownership
 
-## Inputs and state ownership
+Copy terraform.tfvars.example to ignored terraform.tfvars and replace every synthetic ID with applied outputs.
 
-Copy `terraform.tfvars.example` to ignored `terraform.tfvars`. Replace all synthetic IDs with outputs from your existing network deployments. Terraform does not discover production subscriptions or select an ambient subscription for the workload providers.
-
-| Input | Source |
+| Input | Applied source |
 |---|---|
-| `hub.subscription_id` | Actual hub workload subscription |
-| `hub.resource_group_name` | Hub `vnet-rg` output, or another existing hub resource group for the firewall |
-| `hub.firewall_subnet_id` | Hub `subnet_ids["AzureFirewallSubnet"]` |
-| `pprd/prd.subscription_id` | Corresponding spoke workload subscription |
-| `pprd/prd.resource_group_name` | Corresponding `vnet-rg` output, or an existing resource group in that subscription for its route tables |
-| `pprd/prd.vnet_id` | Corresponding `vnet_id` output |
-| `pprd/prd.address_space` | Corresponding `vnet.address_space` output |
-| `pprd/prd.aks_subnets.aks01/aks02.id` | Corresponding `subnet_ids["aks01"]` / `["aks02"]` |
-| `pprd/prd.aks_subnets.aks01/aks02.address_prefix` | Corresponding `subnet_address_prefixes` entry |
+| firewall_id | azure-firewall firewall_id output |
+| pprd/prd.subscription_id | Corresponding workload subscription |
+| pprd/prd.resource_group_name | Network vnet-rg output |
+| pprd/prd.vnet_id | Network vnet_id output |
+| pprd/prd.address_space | Network vnet.address_space output |
+| pprd/prd.aks_subnets.aks01/aks02.id | Network subnet_ids entry |
+| pprd/prd.aks_subnets.aks01/aks02.address_prefix | Network subnet_address_prefixes entry |
 
-Use the actual CIDRs alongside those IDs; the policy sources and opposite-spoke routes depend on them. The sample uses hub `10.80.0.0/16`, PPRD `10.81.0.0/16` and PRD `10.82.0.0/16`. The AKS subnet maps accept only `aks01` and `aks02` and reject an Application Gateway subnet passed under an AKS key.
+The network pack retains VNet, subnet, NSG, peering and DNS ownership. Keep its AKS route CSVs header-only: only this state may associate these route tables. Application Gateway, firewall, private-endpoint and service subnets receive no route association here.
 
-The network pack's AKS route CSVs must stay header-only. A subnet supports one route table association, so do not also create these associations in its CSV module, the AKS root or another state. The firewall subnet and Application Gateway subnet get no route table from this add-on. Use separate state keys for separate deployments; never reuse a network or cluster state key.
+The three provider aliases use the same authenticated principal with explicit subscription targets. That principal needs Reader on the selected hub firewall, network write access in both spoke scopes and separate backend blob access. Required providers must already be registered. Use a separate state key and Azure AD backend authentication; never share state with networks, firewall or clusters.
 
-## Deployment order
+## Use the shared delivery pipelines
 
-1. Deploy all three network states, enable reciprocal peerings and verify all four directions are Connected. Forwarded traffic must be permitted for firewall transit, as configured in the pack. Confirm there is no overlapping address space and that AKS NSGs permit DNS to the firewall and the required outbound protocols.
-2. Review the paid resources and capacity limitations below. Copy `backend.hcl.example` to ignored `backend.local.hcl`, replace its synthetic values, and use a dedicated backend key. Authenticate through the private consumer's approved Azure CLI/OIDC environment. The identity needs network resource permissions in all three workload subscriptions and separate blob access to the backend. These providers use the same authenticated principal; different workload principals require an intentional authentication design.
-3. Leave `enable_aks_routes = false`, then initialize, review a saved plan and apply it. This creates the firewall, policy and route tables without changing subnet routes:
+Copy this entire directory into a separate private consumer root, retaining delivery.azure.json and config/. The hub target is uks/hub; its backend key has an explicit aks-egress component so it cannot collide with the network state. Configure actual tenant/subscription/backend values in delivery.azure.json and config/global.tfvars, then replace config/uks/hub/hub.tfvars with applied network/firewall outputs. Do not also keep terraform.tfvars with conflicting values.
 
-   ```sh
+Use the framework's [component caller examples](https://github.com/MikeeeGit/terraform-delivery-templates/tree/v0.3.0/examples/azure/component), selecting hub/uks. The same guarded saved-plan pipeline handles prepare and attach as separate reviewed configuration commits. Its plan/apply identities need the explicit hub/pprd/prd permissions described above. The Terraform delivery contract rejects tenant, region or subscription drift.
+
+## Deployment sequence
+
+1. Apply hub and both spoke networks with peering disabled, then enable and verify all four peering directions. Forwarded traffic must be allowed. The example uses hub 10.80/16, pprd 10.81/16 and prd 10.82/16.
+2. Apply azure-firewall after the hub subnet exists. Its full example enables DNS proxy and AKS platform egress for the four AKS subnet ranges. Review actual application/registry/authentication/CDN dependencies and add explicit policy rules there. Policy and diagnostic settings remain in the firewall state.
+3. Set both spoke VNet DNS server lists to the firewall_private_ip output and apply the network states. Every private zone needed through that DNS proxy must link to the hub, including the AKS private API zone and separately owned application alias zone.
+4. Supply firewall_id here. Leave enable_aks_routes=false, initialize a dedicated backend, review a saved plan, and create the route tables without attaching them:
+
+   ~~~sh
+   cp backend.hcl.example backend.local.hcl
+   # Replace backend and terraform.tfvars synthetic values before authenticating/planning.
    terraform init -backend-config=backend.local.hcl
    terraform plan -out=egress.tfplan
    terraform apply egress.tfplan
-   terraform output firewall_private_ip
-   ```
+   ~~~
 
-4. In the network-root configuration, set the spoke `dns_servers` lists to the returned firewall IP and reapply those network states before creating AKS nodes. Keep DNS ownership there. The firewall uses Azure-provided upstream DNS, so every private zone required by clients must be linked to its hub VNet. This includes the private AKS API zone and any separately owned private application alias zone. Verify UDP and TCP DNS from a private test host and resolve the required private/public names. Do not blindly point the hub's own DNS configuration at itself without considering hub clients and upstream resolution.
-5. Set `enable_aks_routes = true`. Review and apply a new saved plan. Inspect effective routes on a temporary test NIC in each dedicated AKS subnet: default traffic and opposite-spoke ranges must use the actual firewall IP. Verify DNS, required HTTPS destinations, image-registry authentication/CDN hosts and expected denied traffic. Remove the temporary probes before cluster creation. Only then set the AKS example's UDR-ready acknowledgement and deploy private clusters with `outbound_type = "userDefinedRouting"`.
-6. Pass `route_table_ids.pprd` or `.prd` to the corresponding AKS deployment's network-permission inputs. Its control-plane identity needs the route/subnet permissions required by that cluster design. Recheck cluster bootstrap, node readiness and real image pulls; mocked tests cannot establish connectivity or access rights.
+5. Check peering, DNS, NSGs and the applied firewall policy, then explicitly set enable_aks_routes=true. Review and apply a new saved plan. Verify effective routes, DNS and the required outbound destinations from temporary private test NICs in the AKS subnets. A successful apply is not a connectivity test.
+6. Pass route_table_ids.pprd or .prd to the corresponding AKS slots. Set userDefinedRouting and the AKS UDR-ready acknowledgement only after the actual path is verified. Remove temporary probes before cluster creation; then verify real node bootstrap, registry pulls and workload egress.
 
-The initial route-free step does not claim that AKS already has working egress. A successful Terraform apply also does not establish application reachability. During removal, destroy AKS workloads/clusters before removing their route associations, firewall or DNS path; remove this add-on before deleting the hub subnet.
+The default and opposite-spoke prefixes use the firewall. Inter-environment traffic remains denied unless the firewall owner explicitly permits it. Reciprocal routes avoid an asymmetric inspected path. More-specific same-VNet and hub/spoke system routes are not automatically forced through this default route. Application Gateway retains its separately supported routing.
 
-## Policy and routing behavior
+## Remove deliberately
 
-The default application rule allows AKS platform FQDNs through `AzureKubernetesService` on HTTP/HTTPS, scoped to the four AKS subnet CIDRs. Add explicit registry, authentication and CDN hostnames to `additional_registry_fqdns` when the platform tag does not cover your images. HTTPS registry access is opt-in; an unrestricted `*` is rejected. [Microsoft AKS egress guidance](https://learn.microsoft.com/en-us/azure/aks/limit-egress-traffic).
+Remove applications and AKS clusters before their routes or DNS paths. Disable/remove route associations and this state before deleting the firewall. Remove peering while the network states still exist, then remove the networks. Do not delete state to force ordering.
 
-`allow_cross_spoke_https = false` leaves inter-environment firewall access denied. Enabling it adds two targeted TCP443 rules between the AKS subnet ranges. The opposite-spoke routes exist in both directions to preserve a symmetric firewall path. Peering alone is not transitive. This is transport permission, not application authentication; NSGs, workload network policies, DNS and reachable services still matter. Direct hub/spoke and same-VNet traffic follows its more-specific system routes and is not automatically inspected by this default route.
+The former unpublished all-in-one egress example was split into firewall and route ownership before release. If you independently applied that local draft, review state/resource moves or recreate a disposable sandbox before switching to this layout. Do not create a second firewall in an occupied AzureFirewallSubnet.
 
-`allow_legacy_ntp` defaults to false. Current private AKS nodes do not need the older public control-plane ports TCP9000/UDP1194; current nodes also do not need the legacy outbound NTP exception. If required for an explicitly reviewed older node configuration, the option permits only UDP123 to `ntp.ubuntu.com` from the AKS ranges. Check the [current AKS outbound requirements](https://learn.microsoft.com/en-us/azure/aks/outbound-rules-control-egress) for your cloud, cluster version and enabled add-ons.
+## Verification and limits
 
-Private API access follows the linked private DNS/private network path. This example adds no DNAT/public ingress, firewall-public-IP bypass route or broad cross-environment rule. Application Gateway keeps its independent routing. If you later introduce public load balancer ingress, custom upstream DNS, other cloud endpoints or more spokes, review return routes and policy explicitly.
+    terraform init -backend=false -lockfile=readonly
+    terraform fmt -check -recursive
+    terraform validate
+    terraform test
 
-## Cost and production limits
+Eight provider-mocked tests verify staged attachment, default/peer routes, a changed firewall address, rejection of virtual-hub/wrong resource types and exclusion of Application Gateway subnets. No cloud credentials or live apply are part of CI.
 
-Azure Firewall and the public IP incur charges while deployed, including when no route associations are enabled. This example's single public IP is for demonstration. Production requires current pricing, availability-zone, throughput and SNAT-capacity review; Microsoft recommends planning considerably more frontend capacity for busy AKS estates. Review additional public IPs or supported NAT Gateway integration for your connection patterns. Add monitoring/diagnostic destinations, operational alerts and a tested recovery process to your production design. [Firewall sizing guidance](https://learn.microsoft.com/en-us/azure/aks/limit-egress-traffic#firewall-frontend-ip-requirements).
-
-The sample does not install ingress controllers, workloads, private endpoints or cluster identities, and it cannot prove registry access for images you have not specified. Default Azure NSG rules remain relevant. Keep backend configuration, private inputs, credentials, state and saved plans out of public Git.
-
-## Credential-free checks
-
-From this directory:
-
-```sh
-terraform init -backend=false -lockfile=readonly
-terraform fmt -check -recursive
-terraform validate
-terraform test
-```
-
-Six mocked tests on Terraform 1.16.3 and AzureRM 4.81.0 verify staged association, actual firewall-derived routes at two different private addresses, scoped optional policy, and rejection of an unrestricted registry wildcard or non-AKS subnet assignment. Test variables are synthetic; no `-var-file` is needed. No live Azure apply is part of CI.
+Azure Firewall is a paid prerequisite. It needs workload-specific capacity, monitoring and policy review. See [AKS required outbound traffic](https://learn.microsoft.com/en-us/azure/aks/outbound-rules-control-egress) and [hub/spoke routing](https://learn.microsoft.com/en-us/azure/firewall/firewall-multi-hub-spoke). This example does not claim general Internet access before the firewall and routes are operational.

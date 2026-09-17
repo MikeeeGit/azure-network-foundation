@@ -1,6 +1,6 @@
 terraform {
   required_version = ">= 1.9.0, < 2.0.0"
-  backend "azurerm" {}
+  backend "azurerm" { use_azuread_auth = true }
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
@@ -9,17 +9,23 @@ terraform {
   }
 }
 provider "azurerm" {
-  alias           = "hub"
-  subscription_id = var.hub.subscription_id
+  alias                           = "hub"
+  tenant_id                       = var.tenant_id
+  subscription_id                 = try(split("/", var.firewall_id)[2], "00000000-0000-0000-0000-000000000002")
+  resource_provider_registrations = "none"
   features {}
 }
 provider "azurerm" {
-  alias           = "pprd"
-  subscription_id = var.pprd.subscription_id
+  alias                           = "pprd"
+  tenant_id                       = var.tenant_id
+  subscription_id                 = var.pprd.subscription_id
+  resource_provider_registrations = "none"
   features {}
 }
 provider "azurerm" {
-  alias           = "prd"
-  subscription_id = var.prd.subscription_id
+  alias                           = "prd"
+  tenant_id                       = var.tenant_id
+  subscription_id                 = var.prd.subscription_id
+  resource_provider_registrations = "none"
   features {}
 }

@@ -89,3 +89,8 @@ output "route_table_file_paths" {
 output "subnet_route_table_rules" {
   value = module.subnets.subnet_route_table_rules
 }
+
+output "acr_login_server" {
+  description = "ACR login server for image delivery; empty when this network does not own a registry."
+  value       = try(azurerm_container_registry.acr[0].login_server, "")
+}

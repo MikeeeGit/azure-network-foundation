@@ -1,6 +1,6 @@
 # Complete hub and two-spoke example
 
-This configuration pack extends the deployment root into a connected hub, preproduction spoke and production spoke. It includes both AKS cluster subnets in each spoke, a dedicated Application Gateway subnet, central private DNS, CSV network policy and a separately deployed [Azure Firewall egress add-on](egress/README.md).
+This configuration pack extends the deployment root into a connected hub, preproduction spoke and production spoke. It includes both AKS cluster subnets in each spoke, a dedicated Application Gateway subnet, central private DNS, CSV network policy and a separate [Azure Firewall stack](https://github.com/MikeeeGit/azure-firewall) and [AKS route add-on](egress/README.md).
 
 The two clusters are independent deployment slots inside one spoke; the two spokes are separate environments. This does not replicate applications, databases or cluster state between regions.
 
@@ -25,16 +25,16 @@ flowchart LR
 | Network | Subnet | Prefix | Owner/use |
 |---|---|---|---|
 | hub | GatewaySubnet | 10.80.0.0/24 | Reservation; no VPN/ExpressRoute gateway is deployed |
-| hub | AzureFirewallSubnet | 10.80.1.0/26 | Firewall deployed only by the egress add-on |
+| hub | AzureFirewallSubnet | 10.80.1.0/26 | Firewall deployed by azure-firewall |
 | hub | shared | 10.80.2.0/24 | Shared-service reservation |
 | pprd | aks01 / aks02 | 10.81.0.0/22 / 10.81.4.0/22 | Independent private AKS clusters |
 | pprd | appgateway | 10.81.8.0/24 | Dedicated WAF_v2 Application Gateway |
 | pprd | private-endpoints / services | 10.81.9.0/24 / 10.81.10.0/24 | Optional workloads |
 | prd | same five subnet keys | Corresponding 10.82.* ranges | Separate production environment |
 
-Each environment has its own network state and two resource groups. Each state owns its local peering side. The hub owns central private DNS zones; spoke states own their links. The egress add-on owns its firewall, AKS route tables and their associations. AKS and Application Gateway use separate repositories and states.
+Each environment has its own network state and two resource groups. Each state owns its local peering side. The hub owns central private DNS zones; spoke states own their links. The egress add-on owns its AKS route tables and their associations. The separate firewall state owns the firewall and all policy. AKS and Application Gateway use separate repositories and states.
 
-Peering alone does not provide spoke-to-spoke transit. The add-on supplies explicit routes and firewall rules for the supported flows. It does not force Application Gateway traffic through the firewall. See [Microsoft hub/spoke routing](https://learn.microsoft.com/en-us/azure/firewall/firewall-multi-hub-spoke).
+Peering alone does not provide spoke-to-spoke transit. The route add-on supplies explicit routes; the separate firewall policy controls permitted flows. It does not force Application Gateway traffic through the firewall. See [Microsoft hub/spoke routing](https://learn.microsoft.com/en-us/azure/firewall/firewall-multi-hub-spoke).
 
 ## 1. Prepare a private consumer
 
@@ -74,7 +74,7 @@ The hub creates internal.example, privatelink.uksouth.azmk8s.io, and private-lin
 
 The base pack has header-only route CSVs. It neither creates a fictional firewall next hop nor supplies general Internet egress on its own.
 
-For the complete inspected-egress example, deploy [egress](egress/README.md) after peering with enable_aks_routes=false. This creates the firewall and route tables before attaching them. Its routes reference the actual newly created firewall private IP and apply only to aks01/aks02. Leave their route CSVs empty so two states never compete for subnet associations.
+For inspected egress, apply [azure-firewall](https://github.com/MikeeeGit/azure-firewall) after peering. It owns the firewall and all policy. Pass its firewall_id to the [AKS route add-on](egress/README.md), initially with enable_aks_routes=false. That stack reads the actual firewall private IP from Azure and prepares only AKS route tables. Leave the AKS CSV route files empty so two states never compete for associations.
 
 Set both spoke VNet DNS server lists to the created firewall private IP and reapply the network states before creating clusters. The firewall's DNS proxy must be able to resolve all private zones used by clients; link any separately owned application alias zone to the hub too. Then set enable_aks_routes=true in the egress state, review and apply the associations, and verify DNS and egress from a private test host. Follow the add-on's connectivity checks before setting the AKS UDR-ready acknowledgement.
 
@@ -88,7 +88,7 @@ Use the public AKS and Application Gateway examples linked from the [scenario gu
 
 Export the selected network's subnet_ids, subnet_address_prefixes and vnet outputs. Obtain the hub's managed_private_dns_zone_ids output for its private AKS API zone. Prefer explicit reviewed resource IDs; remote-state readers also gain access to the underlying state and need blob permissions.
 
-For the illustrative pprd pair, reserve internal ingress addresses 10.81.0.20 and 10.81.4.20 in the corresponding AKS subnets. The infrastructure modules do not install an ingress controller or create application Services. Deploy and verify an explicitly internal ingress endpoint in each cluster before pointing the gateway at it.
+For the illustrative pprd pair, reserve internal ingress addresses 10.81.0.20 and 10.81.4.20 in the corresponding AKS subnets. The infrastructure modules do not install application Services. The [sample application](https://github.com/MikeeeGit/aks-platform-demo) uses shared Kustomize delivery to create its own internal LoadBalancer Service at each reserved address. It can connect directly to Application Gateway without an ingress controller. For multiple applications, choose and operate an appropriate controller separately. Verify the backend endpoint in each cluster before pointing the gateway at it.
 
 Create the gateway only after its backend, certificate secret, identity access, DNS and probe settings are ready. Keep gateway subnet routing separate from AKS UDRs. The CSV permits HTTP/HTTPS clients, the GatewayManager control-plane range and Azure Load Balancer probes, with Internet outbound for this public/private frontend baseline. Other default NSG rules still apply; the example is not a complete workload isolation policy.
 
@@ -98,7 +98,7 @@ Choose the active cluster through an explicit backend pool or a gateway-owned pr
 
 From a host with private access, verify central DNS, private AKS API access, each ingress endpoint, gateway backend health and a request through the public listener. Check that AKS subnet routes use the actual firewall, Application Gateway retains its intended egress, and unexpected inter-spoke traffic is denied by the policy.
 
-For removal, remove workloads/gateway dependencies first. Remove AKS clusters before their route associations or DNS paths. Remove egress, disable and remove both peering directions while every network state is still available, then remove spoke and hub networks. Never delete state to force this order.
+For removal, remove workloads/gateway dependencies first. Remove AKS clusters before their route associations or DNS paths. Remove the routing add-on, then the firewall; disable and remove both peering directions while every network state is still available, then remove spoke and hub networks. Never delete state to force this order.
 
 ## Credential-free checks
 

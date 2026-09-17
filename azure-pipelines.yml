@@ -83,6 +83,15 @@ jobs:
         examples/hub-spoke/config/uks/prd/prd.tfvars
   - template: azure-pipelines/jobs/terraform-validate.yml@deliveryTemplates
     parameters:
-      jobName: HubFirewallEgress
+      jobName: HubFirewallRouting
       directory: examples/hub-spoke/egress
       testDirectory: tests
+
+  - template: azure-pipelines/jobs/terraform-validate.yml@deliveryTemplates
+    parameters:
+      jobName: HubRoutingDeliveryTarget
+      directory: examples/hub-spoke/egress
+      testDirectory: tests/targets
+      varFiles: |
+        config/global.tfvars
+        config/uks/hub/hub.tfvars

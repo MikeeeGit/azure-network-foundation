@@ -97,3 +97,7 @@ terraform test
 Tests use mock providers and overridden remote-state data. They do not prove Azure permissions, real provider API behavior or a live deployment. A sandbox deployment should be recorded separately when performed.
 
 Public source: [GitHub](https://github.com/MikeeeGit/azure-network-foundation). Matching repository: [Azure DevOps](https://dev.azure.com/Mrmichaelflynn/AzureInfraCode/_git/azure-network-foundation), which requires project access.
+
+## CI change scope
+
+Markdown-only edits use lightweight required GitHub checks and are excluded from automatic Azure validation builds. Changes to Terraform, application code, scripts, workflow definitions or executable examples still run full validation, including examples stored under docs/. Mixed changes also run full validation. Manual GitHub runs and unknown Git comparison ranges default to full validation.

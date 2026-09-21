@@ -1,8 +1,8 @@
 locals {
   tags                 = merge(var.global_tags, var.environment_tags)
   location_abbreviated = var.location_abbreviated
-  label                = "${var.location_abbreviated}-${var.environment}"
-  hub_resource_group   = coalesce(var.hub_dns_resource_group_name, "${var.location_abbreviated}-hub-vnet-rg-01")
+  label                = join("-", compact([var.location_abbreviated, var.environment, var.name_prefix]))
+  hub_resource_group   = coalesce(var.hub_dns_resource_group_name, "${join("-", compact([var.location_abbreviated, "hub", var.name_prefix]))}-vnet-rg-01")
 
   private_dns = concat(var.private_dns, [
     for zone in var.private_dns_zones : {

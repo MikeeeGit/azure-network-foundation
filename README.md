@@ -81,6 +81,7 @@ The examples preserve the original five-target/26-subnet configuration shape wit
 ## Documentation and validation
 
 - [Configuration and CSV policy](docs/configuration.md)
+- [Opt-in isolated lab naming](examples/isolated-lab/README.md)
 - [Deployment order and daily operations](docs/deployment.md)
 - [GitHub/Azure DevOps deployment caller examples](examples/delivery/README.md)
 - [Public-copy provenance and compatibility](docs/migration.md)

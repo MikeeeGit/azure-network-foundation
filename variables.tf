@@ -13,9 +13,20 @@ variable "location_abbreviated" {
 }
 
 variable "company_abbreviation" {
-  description = "Abbreviation for the company name to be used in resource naming."
+  description = "Retained compatibility metadata. Use name_prefix for opt-in isolated resource names."
   type        = string
   default     = ""
+}
+
+variable "name_prefix" {
+  description = "Optional new-deployment naming qualifier after region/environment; empty preserves existing names. Changing it replaces named resources."
+  type        = string
+  default     = ""
+  nullable    = false
+  validation {
+    condition     = var.name_prefix == "" || can(regex("^([a-z]|[a-z][a-z0-9-]{0,18}[a-z0-9])$", var.name_prefix))
+    error_message = "name_prefix must be empty or 1-20 lowercase letters/digits/hyphens, starting with a letter and ending alphanumeric."
+  }
 }
 
 variable "dns_zone_name" {

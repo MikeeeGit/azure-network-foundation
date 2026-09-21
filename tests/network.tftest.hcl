@@ -327,3 +327,69 @@ run "rejects_environment_subscription_mismatch" {
   }
   expect_failures = [var.subscription]
 }
+
+run "isolated_names_preserve_logical_keys_and_csv_paths" {
+  command = plan
+  variables {
+    name_prefix = "aks-lab"
+  }
+  assert {
+    condition     = azurerm_resource_group.network.name == "uks-pprd-aks-lab-netw-rg-01" && azurerm_resource_group.vnet.name == "uks-pprd-aks-lab-vnet-rg-01"
+    error_message = "An explicit qualifier must isolate both network resource groups."
+  }
+  assert {
+    condition     = output.vnet.name == "uks-pprd-aks-lab-vnet-01" && output.subnets["web"].name == "uks-pprd-aks-lab-web"
+    error_message = "VNet and generated subnet names must use the same isolated naming contract."
+  }
+  assert {
+    condition     = endswith(output.subnets_file_paths["web"], "config/uks/pprd/pprd_web_nsg.csv")
+    error_message = "Isolated Azure names must not alter logical keys or CSV discovery."
+  }
+}
+
+run "isolated_spoke_uses_matching_hub_dns_group" {
+  command = plan
+  variables {
+    name_prefix = "aks-lab"
+    private_endpoints = [{
+      name                  = "web-storage"
+      resource_id           = "/subscriptions/00000000-0000-0000-0000-000000000003/resourceGroups/example/providers/Microsoft.Storage/storageAccounts/examplestorage"
+      service_connection    = "blob"
+      private_dns_zone_name = "privatelink.blob.core.windows.net"
+      subnet_name           = "web"
+    }]
+  }
+  assert {
+    condition     = data.azurerm_private_dns_zone.endpoints["web-storage"].resource_group_name == "uks-hub-aks-lab-vnet-rg-01"
+    error_message = "The default central DNS lookup must follow the isolated hub name."
+  }
+}
+
+run "isolated_spoke_preserves_explicit_hub_dns_override" {
+  command = plan
+  variables {
+    name_prefix                 = "aks-lab"
+    hub_dns_resource_group_name = "existing-shared-dns-rg"
+    hub_private_dns_zone_names  = ["internal.example"]
+  }
+  assert {
+    condition     = local.hub_resource_group == "existing-shared-dns-rg"
+    error_message = "An explicit separately owned hub DNS resource group must remain authoritative."
+  }
+}
+
+run "reject_invalid_isolation_label" {
+  command = plan
+  variables {
+    name_prefix = "../shared"
+  }
+  expect_failures = [var.name_prefix]
+}
+
+run "reject_trailing_hyphen_isolation_label" {
+  command = plan
+  variables {
+    name_prefix = "aks-lab-"
+  }
+  expect_failures = [var.name_prefix]
+}

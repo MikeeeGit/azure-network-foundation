@@ -14,13 +14,15 @@ The included IDs end in 001–004 and are synthetic. Example storage names must 
 
 ## Names and ownership
 
-The stack uses `<region>-<environment>` as its label:
+The stack defaults to `<region>-<environment>` as its label. Optional `name_prefix` inserts a qualifier after the environment, producing `<region>-<environment>-<name_prefix>` for a new isolated deployment:
 
 - Network resource group: `<label>-netw-rg-01`.
 - VNet resource group: `<label>-vnet-rg-01`.
 - VNet: `<label>-vnet-01`.
 - Regular subnet: `<label>-<logical-name>`.
 - Reserved subnet names such as `GatewaySubnet` and `AzureFirewallSubnet` remain exact.
+
+Use `name_prefix = "aks-lab"` only in a fresh private lab input; [isolated naming](../examples/isolated-lab/README.md) shows the handoff. The default empty value preserves existing names. Changing it on existing state can replace resource groups, VNets and dependent resources; it is not a state migration. Logical subnet keys, CSV paths and reserved subnet names do not change. Choose independent backend keys and update consumers from applied IDs.
 
 The `company_abbreviation`, `environment_number`, `azvdc_network`, `backend_container_suffix` and `remote_state_container_suffix_map` inputs remain compatibility metadata where retained. Resource names keep their original fixed 01 suffix. Backend naming is controlled by delivery configuration; remote peer backends are explicit. Changing these metadata values alone does not rename resources or reconfigure peer-state access.
 
@@ -72,7 +74,7 @@ A route to Internet does not provide outbound address translation. This edition 
 
 Set `diag_log_workspace` to a Log Analytics resource ID to enable VNet diagnostics. Null disables diagnostics. The stack does not create or guess a workspace. `ddos_plan_id` attaches an existing plan when provided.
 
-Private endpoints use logical subnet keys and look up external zones in the hub subscription. A zone created by this same hub stack is consumed directly from the VNet module, so a new zone and endpoint can be planned together. By default the DNS resource group is `<region>-hub-vnet-rg-01`; `hub_dns_resource_group_name` overrides it. Set `link_endpoint_dns_zones=true` only when this spoke should own the central-zone links. Otherwise configure existing links or resolver forwarding. Avoid two Terraform states managing the same link.
+Private endpoints use logical subnet keys and look up external zones in the hub subscription. A zone created by this same hub stack is consumed directly from the VNet module, so a new zone and endpoint can be planned together. The default DNS resource group follows the qualifier: `<region>-hub-vnet-rg-01` when empty, or `<region>-hub-<name_prefix>-vnet-rg-01`. `hub_dns_resource_group_name` remains an explicit override for a separately owned hub. Set `link_endpoint_dns_zones=true` only when this spoke should own the central-zone links. Otherwise configure existing links or resolver forwarding. Avoid two Terraform states managing the same link.
 
 ACR is disabled by default. Georeplication is implemented when `acr_config.sku="Premium"`; non-Premium replication is rejected. Admin credentials are disabled in the example. Registry names must be globally unique.
 

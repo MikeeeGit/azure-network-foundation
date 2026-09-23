@@ -12,7 +12,7 @@ concurrency:
 jobs:
   terraform:
     name: Terraform root
-    uses: MikeeeGit/terraform-delivery-templates/.github/workflows/terraform-validate.yml@281d779aced9c6e7da082b5e57c85639dc1858df
+    uses: MikeeeGit/terraform-delivery-templates/.github/workflows/terraform-validate.yml@f60f7856484f1c423e16c4bebd96d8b4344cf3f9
     with:
       template-ref: 281d779aced9c6e7da082b5e57c85639dc1858df
       directory: .
@@ -28,7 +28,7 @@ jobs:
           - {region: uks, environment: prd}
           - {region: ukw, environment: hub}
           - {region: ukw, environment: bcdr}
-    uses: MikeeeGit/terraform-delivery-templates/.github/workflows/terraform-validate.yml@281d779aced9c6e7da082b5e57c85639dc1858df
+    uses: MikeeeGit/terraform-delivery-templates/.github/workflows/terraform-validate.yml@f60f7856484f1c423e16c4bebd96d8b4344cf3f9
     with:
       template-ref: 281d779aced9c6e7da082b5e57c85639dc1858df
       directory: .
@@ -43,7 +43,7 @@ jobs:
       fail-fast: false
       matrix:
         environment: [hub, pprd, prd]
-    uses: MikeeeGit/terraform-delivery-templates/.github/workflows/terraform-validate.yml@281d779aced9c6e7da082b5e57c85639dc1858df
+    uses: MikeeeGit/terraform-delivery-templates/.github/workflows/terraform-validate.yml@f60f7856484f1c423e16c4bebd96d8b4344cf3f9
     with:
       template-ref: 281d779aced9c6e7da082b5e57c85639dc1858df
       directory: .
@@ -53,7 +53,7 @@ jobs:
         examples/hub-spoke/config/uks/${{ matrix.environment }}/${{ matrix.environment }}.tfvars
   egress:
     name: Hub firewall routing
-    uses: MikeeeGit/terraform-delivery-templates/.github/workflows/terraform-validate.yml@281d779aced9c6e7da082b5e57c85639dc1858df
+    uses: MikeeeGit/terraform-delivery-templates/.github/workflows/terraform-validate.yml@f60f7856484f1c423e16c4bebd96d8b4344cf3f9
     with:
       template-ref: 281d779aced9c6e7da082b5e57c85639dc1858df
       directory: examples/hub-spoke/egress
@@ -61,7 +61,7 @@ jobs:
 
   egress-target:
     name: Hub routing delivery target
-    uses: MikeeeGit/terraform-delivery-templates/.github/workflows/terraform-validate.yml@281d779aced9c6e7da082b5e57c85639dc1858df
+    uses: MikeeeGit/terraform-delivery-templates/.github/workflows/terraform-validate.yml@f60f7856484f1c423e16c4bebd96d8b4344cf3f9
     with:
       template-ref: 281d779aced9c6e7da082b5e57c85639dc1858df
       directory: examples/hub-spoke/egress
